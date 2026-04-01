@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "네이버 예약 매크로",
+  "version": "1.0.0",
+  "description": "네이버 지도 예약 서비스 자동화 매크로",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://map.naver.com/*",
+    "https://m.booking.naver.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://map.naver.com/*",
+        "https://m.booking.naver.com/*"
+      ],
+      "js": [
+        "content/utils/dom_helper.js",
+        "content/utils/date_helper.js",
+        "content/services/base_service.js",
+        "content/services/jungnang_camping.js",
+        "content/content_main.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

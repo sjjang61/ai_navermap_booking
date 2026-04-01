@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>네이버 예약 매크로</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- 헤더 -->
+    <header class="app-header">
+      <span class="app-icon">🏕</span>
+      <span class="app-title">네이버 예약 매크로</span>
+      <button id="btnPopout" class="btn-popout" title="독립 창으로 열기">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+          <path d="M1.5 1h5.25a.75.75 0 0 1 0 1.5H2.5v11h11v-4.25a.75.75 0 0 1 1.5 0V14a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
+          <path d="M9 1.75A.75.75 0 0 1 9.75 1H15a1 1 0 0 1 1 1v5.25a.75.75 0 0 1-1.5 0V3.56L8.03 10.03a.75.75 0 1 1-1.06-1.06L13.44 2.5H9.75A.75.75 0 0 1 9 1.75z"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- 서비스 탭 -->
+    <nav class="tab-nav">
+      <div class="tab-item active" data-service-id="jungnang_camping">중랑가족캠핑장</div>
+      <!-- 추후 탭 추가: <div class="tab-item" data-service-id="seoul_forest">서울숲 캠핑장</div> -->
+    </nav>
+
+    <!-- 탭 콘텐츠 -->
+    <main class="tab-content">
+      <!-- 날짜 선택 모드 -->
+      <section class="date-mode-section">
+        <div class="mode-label">날짜 선택 모드</div>
+        <div class="mode-radio-group">
+          <label class="radio-label">
+            <input type="radio" name="dateMode" value="specific" checked />
+            <span>특정 날짜</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="dateMode" value="weekday" />
+            <span>요일 반복</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- 특정 날짜 선택 패널 -->
+      <section class="panel" id="panel-specific">
+        <div class="input-row">
+          <input type="date" id="datePicker" class="date-input" />
+          <button id="btnAddDate" class="btn btn-secondary">추가</button>
+        </div>
+        <div id="dateTagList" class="date-tag-list"></div>
+      </section>
+
+      <!-- 요일 반복 선택 패널 -->
+      <section class="panel hidden" id="panel-weekday">
+        <div class="weekday-checkboxes">
+          <label class="weekday-label"><input type="checkbox" value="1" /><span>월</span></label>
+          <label class="weekday-label"><input type="checkbox" value="2" /><span>화</span></label>
+          <label class="weekday-label"><input type="checkbox" value="3" /><span>수</span></label>
+          <label class="weekday-label"><input type="checkbox" value="4" /><span>목</span></label>
+          <label class="weekday-label"><input type="checkbox" value="5" /><span>금</span></label>
+          <label class="weekday-label"><input type="checkbox" value="6" /><span>토</span></label>
+          <label class="weekday-label"><input type="checkbox" value="0" /><span>일</span></label>
+        </div>
+        <div class="weeks-row">
+          <span class="weeks-label">검색 범위: 오늘부터</span>
+          <input type="number" id="weeksAhead" class="weeks-input" value="4" min="1" max="24" />
+          <span class="weeks-label">주 이내</span>
+        </div>
+      </section>
+
+      <!-- 실행 버튼 -->
+      <div class="action-row">
+        <button id="btnStart" class="btn btn-primary">▶ 예약 시작</button>
+        <button id="btnStop" class="btn btn-danger hidden">■ 중단</button>
+      </div>
+
+      <!-- 실행 로그 -->
+      <section class="log-section">
+        <div class="log-header">─── 실행 로그 ───</div>
+        <div id="logPanel" class="log-panel"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+/* 팝업 전체 스타일 */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 360px;
+  min-height: 480px;
+  font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  color: #222;
+  background: #f7f8fa;
+}
+
+/* 독립 창 모드: 고정 width 해제, 전체 높이 사용 */
+body.is-window {
+  width: 100%;
+  min-height: 100vh;
+}
+
+body.is-window .app {
+  min-height: 100vh;
+}
+
+body.is-window .log-panel {
+  max-height: none;
+  flex: 1;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 480px;
+}
+
+/* 헤더 */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #03c75a;
+  color: #fff;
+}
+
+.app-icon {
+  font-size: 18px;
+}
+
+.app-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  flex: 1;
+}
+
+/* 독립 창 토글 버튼 */
+.btn-popout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 5px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.btn-popout:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.btn-popout.hidden {
+  display: none !important;
+}
+
+/* 탭 네비게이션 */
+.tab-nav {
+  display: flex;
+  background: #fff;
+  border-bottom: 2px solid #e8e8e8;
+}
+
+.tab-item {
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #888;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.tab-item:hover {
+  color: #03c75a;
+}
+
+.tab-item.active {
+  color: #03c75a;
+  border-bottom-color: #03c75a;
+  font-weight: 700;
+}
+
+/* 콘텐츠 */
+.tab-content {
+  padding: 14px 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 날짜 선택 모드 */
+.date-mode-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mode-label {
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+}
+
+.mode-radio-group {
+  display: flex;
+  gap: 14px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.radio-label input[type="radio"] {
+  accent-color: #03c75a;
+  cursor: pointer;
+}
+
+/* 패널 */
+.panel {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel.hidden {
+  display: none;
+}
+
+/* 날짜 입력 행 */
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.date-input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #333;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.date-input:focus {
+  border-color: #03c75a;
+}
+
+/* 날짜 태그 목록 */
+.date-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.date-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #e8f9f0;
+  color: #019a47;
+  border: 1px solid #b6e8cc;
+  border-radius: 14px;
+  padding: 3px 10px 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.date-tag-remove {
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: #019a47;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.date-tag-remove:hover {
+  color: #c0392b;
+}
+
+/* 요일 선택 */
+.weekday-checkboxes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.weekday-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.weekday-label input[type="checkbox"] {
+  accent-color: #03c75a;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.weekday-label span {
+  font-size: 12px;
+  color: #444;
+}
+
+.weeks-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.weeks-label {
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+}
+
+.weeks-input {
+  width: 54px;
+  padding: 5px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+}
+
+.weeks-input:focus {
+  border-color: #03c75a;
+}
+
+/* 버튼 */
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #03c75a;
+  color: #fff;
+  flex: 1;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #02a84c;
+}
+
+.btn-secondary {
+  background: #f0f0f0;
+  color: #444;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.btn-danger {
+  background: #e74c3c;
+  color: #fff;
+  flex: 1;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c0392b;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* 실행 버튼 행 */
+.action-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* 로그 섹션 */
+.log-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 120px;
+}
+
+.log-header {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.log-panel {
+  flex: 1;
+  background: #1e1e2e;
+  border-radius: 8px;
+  padding: 10px;
+  overflow-y: auto;
+  min-height: 100px;
+  max-height: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.log-entry {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #cdd6f4;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  word-break: break-all;
+}
+
+.log-entry .log-icon {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.log-entry.success { color: #a6e3a1; }
+.log-entry.error   { color: #f38ba8; }
+.log-entry.warn    { color: #fab387; }
+.log-entry.info    { color: #89dceb; }
+.log-entry.loading { color: #cba6f7; }
