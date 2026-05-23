@@ -210,7 +210,7 @@ class NaverBookingService extends BaseReservationService {
       if (this._stopped) return await this._finish(log);
       const el = candidates[i];
       el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-      await sleep(400);
+      await sleep(200);
 
       if (location.href !== urlBefore) {
         log('success', `[listPhase] 후보[${i}] 클릭 후 URL 변경 — 페이지 이동 발생 (재개 대기)`);
@@ -243,13 +243,13 @@ class NaverBookingService extends BaseReservationService {
       return;
     }
 
-    // 캘린더 로딩 대기 (최대 12초)
+    // 캘린더 로딩 대기 (최대 12초, 200ms 폴링 → 빠른 감지)
     let calTitle = null;
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 60; i++) {
       if (this._stopped) return await this._finish(log);
       calTitle = document.querySelector('div.calendar_title');
       if (calTitle && /\d{4}\.\d{1,2}/.test(calTitle.textContent)) break;
-      await sleep(500);
+      await sleep(200);
     }
 
     if (!calTitle || !/\d{4}\.\d{1,2}/.test(calTitle.textContent)) {
@@ -261,7 +261,7 @@ class NaverBookingService extends BaseReservationService {
     }
 
     log('success', `[detailPhase] 캘린더 발견 — title="${calTitle.textContent.trim().match(/\d{4}\.\d{1,2}/)[0]}"`);
-    await sleep(300);
+    await sleep(150);
 
     let remainingDates = [...state.targetDates];
 
@@ -322,12 +322,12 @@ class NaverBookingService extends BaseReservationService {
 
   async _step2_clickMoreButton(log) {
     log('info', '[STEP2] 시작 — 더보기 버튼 탐색');
-    await sleep(500);
+    await sleep(200);
     const moreBtn = document.querySelector('button.button_more');
     if (moreBtn) {
       log('info', '[STEP2] 더보기 버튼 발견 → 클릭');
       moreBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-      await sleep(800);
+      await sleep(400);
     } else {
       log('info', '[STEP2] 더보기 버튼 없음 — 전체 상품 이미 표시됨');
     }
@@ -336,7 +336,7 @@ class NaverBookingService extends BaseReservationService {
   // 상품 목록은 IntersectionObserver / scroll 이벤트 기반 lazy 로딩.
   // 단순 window.scrollTo만으로는 내부 스크롤 컨테이너를 거드리지 못할 수 있으므로
   // 마지막 상품에 scrollIntoView를 호출하여 모든 ancestor scroll container를 자동 처리한다.
-  async _waitForFullProductList(log, maxWaitMs = 8000, pollIntervalMs = 600) {
+  async _waitForFullProductList(log, maxWaitMs = 6000, pollIntervalMs = 300) {
     let prevCount = this._getProductElements().elements.length;
     log('info', `[listPhase] 초기 상품 수: ${prevCount} — lazy 로딩 트리거 시작 (최대 ${maxWaitMs}ms)`);
 
@@ -371,16 +371,16 @@ class NaverBookingService extends BaseReservationService {
         stableTicks = 0;
       } else {
         stableTicks++;
-        log('info', `[listPhase] [tick ${tickIdx}] 변화 없음 (현재 ${prevCount}개, 연속 ${stableTicks}회)`);
-        if (stableTicks >= 3) {
-          log('info', `[listPhase] 상품 수 안정화 → ${prevCount}개 (조기 종료)`);
+        // 4회(~1.2s) 연속 변화 없으면 안정화로 간주 (300ms × 4)
+        if (stableTicks >= 4) {
+          log('info', `[listPhase] 상품 수 안정화 → ${prevCount}개 (${tickIdx} tick에서 조기 종료)`);
           break;
         }
       }
     }
 
     window.scrollTo(0, 0);
-    await sleep(300);
+    await sleep(100);
     return prevCount;
   }
 
@@ -455,7 +455,7 @@ class NaverBookingService extends BaseReservationService {
           log('warn', `[날짜탐색] "${productName}" ${targetDate}: 달력 이동 실패. 스킵.`);
           return false;
         }
-        await sleep(500);
+        await sleep(250);
         const afterYM = this._readCalendarYearMonth(calTitleSelector);
         log('info', `[날짜탐색] 달력 이동 후 타이틀: "${afterYM || '(없음)'}"`);
       }
@@ -539,7 +539,7 @@ class NaverBookingService extends BaseReservationService {
 
       log('success', `[날짜탐색] "${productName}" ${targetDate} 예약 가능 (${statusText || 'OK'}) → 버튼 클릭`);
       btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-      await sleep(1000);
+      await sleep(400);
 
       // 시간대 선택이 필요한 서비스(예: 테니스장)면 우선순위 순으로 시간대 클릭 시도
       if (Array.isArray(timeSlots) && timeSlots.length > 0) {
@@ -566,12 +566,12 @@ class NaverBookingService extends BaseReservationService {
   async _selectTimeSlot(targetHours, log) {
     log('info', `[시간대] 선택 시도: [${targetHours.map(h => String(h).padStart(2, '0') + ':00').join(', ')}]`);
 
-    // 날짜 클릭 후 시간 슬라이더가 렌더링될 때까지 대기 (최대 5초)
+    // 날짜 클릭 후 시간 슬라이더가 렌더링될 때까지 대기 (최대 5초, 200ms 폴링)
     let slots = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 25; i++) {
       slots = this._collectTimeSlots();
       if (slots.length > 0) break;
-      await sleep(500);
+      await sleep(200);
     }
 
     if (slots.length === 0) {
@@ -602,7 +602,7 @@ class NaverBookingService extends BaseReservationService {
       const clickTarget = btn || slot.li;
       log('success', `[시간대] ${String(hour).padStart(2, '0')}:00 클릭 (${btn ? 'button.btn_time' : 'li.time_item'})`);
       clickTarget.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-      await sleep(800);
+      await sleep(300);
       return true;
     }
 
@@ -756,7 +756,7 @@ class NaverBookingService extends BaseReservationService {
 
       log('info', `[달력이동] 버튼 클릭(${i + 1}/${steps}): class="${btn.className}"`);
       btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-      await sleep(600);
+      await sleep(300);
     }
 
     return true;
@@ -799,8 +799,8 @@ class NaverBookingService extends BaseReservationService {
       nextBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
       log('info', `[STEP5] 다음 버튼 클릭 완료 → /request 페이지 이동 대기`);
 
-      for (let i = 0; i < 16; i++) {
-        await sleep(500);
+      for (let i = 0; i < 40; i++) {
+        await sleep(200);
         if (isOnRequestPage()) {
           log('success', `[STEP5] /request 페이지 도달 — "${productName}" ${targetDate} 예약 요청 완료. 결제는 수동으로 진행해 주세요.`);
           return true;

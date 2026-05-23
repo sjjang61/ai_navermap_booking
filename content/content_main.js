@@ -62,7 +62,7 @@ async function runService(serviceId, opts, source) {
 /**
  * 메시지 수신 핸들러
  */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === 'RUN_SERVICE') {
     runService(message.serviceId, {
       targetDates: message.targetDates,
@@ -103,7 +103,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  */
 (async () => {
   // DOM/storage 안정화 잠시 대기
-  await sleep(300);
+  await sleep(100);
   try {
     const { macroState, isRunning } = await chrome.storage.local.get(['macroState', 'isRunning']);
     if (!isRunning || !macroState) return;
