@@ -15,11 +15,18 @@ const SERVICES_CONFIG = {
     defaultTitleFilter: '[^\\s-]+-[^\\s-]+\\s*오토캠핑',
   },
 
-  // ── 신규 서비스 추가 예시 ────────────────────────────────────────
-  // seoul_forest: {
-  //   serviceId: 'seoul_forest',
-  //   serviceName: '서울숲 캠핑장',
-  //   entryUrl: 'https://m.booking.naver.com/booking/5/bizes/XXXXXX/items?...',
-  //   defaultTitleFilter: '',
-  // },
+  yangjae_tennis: {
+    serviceId: 'yangjae_tennis',
+    serviceName: '양재 테니스장',
+    entryUrl: 'https://m.booking.naver.com/booking/10/bizes/210031/items?theme=place&service-target=map-pc&lang=ko&area=bmp&map-search=1',
+    // 기본값: "x월" 패턴과 "실외" 키워드를 모두 포함 (순서 무관, lookahead).
+    // 예약하려는 월에 맞게 사용자가 popup UI에서 5월 → 6월 등으로 수정.
+    defaultTitleFilter: '(?=.*\\d+월)(?=.*실외)',
+    // 시간대 선택 (1시간 단위) — 시작시각 hourStart부터 hourEnd까지 (양 끝 inclusive)
+    // 예: hourStart=6, hourEnd=21 → 06:00, 07:00, ..., 21:00 (예약 시 22:00 종료)
+    timeSlots: {
+      hourStart: 6,
+      hourEnd: 21,
+    },
+  },
 };

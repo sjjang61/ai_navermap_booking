@@ -94,7 +94,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * 예약 시작 처리
  */
 async function handleStartReservation(message) {
-  const { serviceId, targetDates, titleFilter, maxProducts, searchDirection } = message;
+  const { serviceId, targetDates, titleFilter, maxProducts, searchDirection, timeSlots, monthFilter } = message;
 
   // 이전 실행의 macroState 잔여물 제거 (자동 재개 오작동 방지)
   // 상태 저장 + service worker keepalive 시작
@@ -126,7 +126,9 @@ async function handleStartReservation(message) {
       targetDates,
       titleFilter,
       maxProducts,
-      searchDirection
+      searchDirection,
+      timeSlots,
+      monthFilter
     });
   } catch (err) {
     await chrome.storage.local.set({ isRunning: false, currentServiceId: null });

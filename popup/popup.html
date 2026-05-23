@@ -17,7 +17,7 @@
     <!-- 서비스 탭 -->
     <nav class="tab-nav">
       <div class="tab-item active" data-service-id="jungnang_camping">중랑가족캠핑장</div>
-      <!-- 추후 탭 추가: <div class="tab-item" data-service-id="seoul_forest">서울숲 캠핑장</div> -->
+      <div class="tab-item" data-service-id="yangjae_tennis">양재 테니스장</div>
     </nav>
 
     <!-- 탭 콘텐츠 -->
@@ -72,6 +72,11 @@
           <p class="filter-helper">매칭되는 상품만 탐색합니다.</p>
           <button id="btnResetFilter" class="btn-link" type="button">기본값으로</button>
         </div>
+        <label class="month-filter-row">
+          <input type="checkbox" id="monthFilterCheckbox" />
+          <span class="month-filter-text">월간 필터링 사용</span>
+          <span class="month-filter-hint">선택한 날짜의 월(예: 6월)이 제목에 포함된 상품만 탐색</span>
+        </label>
         <div class="search-count-row">
           <label for="maxProducts" class="search-count-label">탐색 상품 수</label>
           <input type="number" id="maxProducts" class="search-count-input" value="0" min="0" max="999" />
@@ -88,6 +93,19 @@
             <span>후방 탐색</span>
           </label>
         </div>
+      </section>
+
+      <!-- 시간대 선택 (시간대 기반 서비스 전용) -->
+      <section class="timeslot-section hidden" id="timeslot-section">
+        <div class="timeslot-header">
+          <span class="timeslot-label">예약 시간대 (다중 선택)</span>
+          <div class="timeslot-actions">
+            <button id="btnTimeSelectAll" type="button" class="btn-link">전체</button>
+            <button id="btnTimeClear" type="button" class="btn-link">해제</button>
+          </div>
+        </div>
+        <div class="timeslot-grid" id="timeslotGrid"></div>
+        <p class="timeslot-helper">선택한 시간을 빠른 순서로 시도합니다.</p>
       </section>
 
       <!-- 실행 버튼 -->

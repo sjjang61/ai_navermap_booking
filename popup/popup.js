@@ -23,6 +23,11 @@ const titleFilterInput = document.getElementById('titleFilter');
 const btnResetFilter = document.getElementById('btnResetFilter');
 const maxProductsInput = document.getElementById('maxProducts');
 const directionRadios = document.querySelectorAll('input[name="searchDirection"]');
+const timeslotSection = document.getElementById('timeslot-section');
+const timeslotGrid = document.getElementById('timeslotGrid');
+const btnTimeSelectAll = document.getElementById('btnTimeSelectAll');
+const btnTimeClear = document.getElementById('btnTimeClear');
+const monthFilterCheckbox = document.getElementById('monthFilterCheckbox');
 
 // ─── 탭 전환 ──────────────────────────────────────────────────────
 tabItems.forEach(tab => {
@@ -31,6 +36,8 @@ tabItems.forEach(tab => {
     tab.classList.add('active');
     activeServiceId = tab.dataset.serviceId;
     loadFilterForService(activeServiceId);
+    loadMonthFilterForService(activeServiceId);
+    renderTimeslotSection(activeServiceId);
   });
 });
 
@@ -66,6 +73,24 @@ btnResetFilter.addEventListener('click', async () => {
     const { serviceFilters = {} } = await chrome.storage.local.get('serviceFilters');
     serviceFilters[activeServiceId] = def;
     await chrome.storage.local.set({ serviceFilters });
+  } catch (_) {}
+});
+
+// ─── 월간 필터링: 서비스별 저장/로드 ──────────────────────────────
+async function loadMonthFilterForService(serviceId) {
+  try {
+    const { serviceMonthFilters = {} } = await chrome.storage.local.get('serviceMonthFilters');
+    monthFilterCheckbox.checked = !!serviceMonthFilters[serviceId];
+  } catch (_) {
+    monthFilterCheckbox.checked = false;
+  }
+}
+
+monthFilterCheckbox.addEventListener('change', async () => {
+  try {
+    const { serviceMonthFilters = {} } = await chrome.storage.local.get('serviceMonthFilters');
+    serviceMonthFilters[activeServiceId] = monthFilterCheckbox.checked;
+    await chrome.storage.local.set({ serviceMonthFilters });
   } catch (_) {}
 });
 
@@ -108,6 +133,81 @@ directionRadios.forEach(r => {
       await chrome.storage.local.set({ searchDirection: getSelectedDirection() });
     } catch (_) {}
   });
+});
+
+// ─── 시간대 선택: 서비스별 동적 렌더링 + 저장/로드 ────────────────
+function getTimeslotConfig(serviceId) {
+  return (typeof SERVICES_CONFIG !== 'undefined' && SERVICES_CONFIG[serviceId]?.timeSlots) || null;
+}
+
+function formatHourLabel(hour) {
+  return `${String(hour % 24).padStart(2, '0')}:00`;
+}
+
+async function renderTimeslotSection(serviceId) {
+  const cfg = getTimeslotConfig(serviceId);
+  if (!cfg) {
+    timeslotSection.classList.add('hidden');
+    timeslotGrid.innerHTML = '';
+    return;
+  }
+  timeslotSection.classList.remove('hidden');
+
+  // 저장된 선택 불러오기
+  let selected = [];
+  try {
+    const { serviceTimeSlots = {} } = await chrome.storage.local.get('serviceTimeSlots');
+    selected = Array.isArray(serviceTimeSlots[serviceId]) ? serviceTimeSlots[serviceId] : [];
+  } catch (_) {}
+
+  // 체크박스 chip 렌더
+  timeslotGrid.innerHTML = '';
+  for (let h = cfg.hourStart; h <= cfg.hourEnd; h++) {
+    const isChecked = selected.includes(h);
+    const label = document.createElement('label');
+    label.className = 'timeslot-chip' + (isChecked ? ' checked' : '');
+    label.innerHTML = `<input type="checkbox" value="${h}" ${isChecked ? 'checked' : ''}><span>${formatHourLabel(h)}</span>`;
+    timeslotGrid.appendChild(label);
+  }
+
+  // 체크 변경 → 저장 + chip 시각 토글
+  timeslotGrid.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      cb.closest('.timeslot-chip').classList.toggle('checked', cb.checked);
+      await saveTimeslots(serviceId);
+    });
+  });
+}
+
+function getSelectedTimeslots() {
+  return Array.from(timeslotGrid.querySelectorAll('input[type="checkbox"]:checked'))
+    .map(cb => parseInt(cb.value, 10))
+    .filter(n => Number.isFinite(n))
+    .sort((a, b) => a - b);
+}
+
+async function saveTimeslots(serviceId) {
+  try {
+    const { serviceTimeSlots = {} } = await chrome.storage.local.get('serviceTimeSlots');
+    serviceTimeSlots[serviceId] = getSelectedTimeslots();
+    await chrome.storage.local.set({ serviceTimeSlots });
+  } catch (_) {}
+}
+
+btnTimeSelectAll.addEventListener('click', async () => {
+  timeslotGrid.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = true;
+    cb.closest('.timeslot-chip').classList.add('checked');
+  });
+  await saveTimeslots(activeServiceId);
+});
+
+btnTimeClear.addEventListener('click', async () => {
+  timeslotGrid.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+    cb.closest('.timeslot-chip').classList.remove('checked');
+  });
+  await saveTimeslots(activeServiceId);
 });
 
 // ─── 날짜 선택 모드 전환 ──────────────────────────────────────────
@@ -193,9 +293,19 @@ btnStart.addEventListener('click', async () => {
   const maxProductsRaw = parseInt(maxProductsInput.value, 10);
   const maxProducts = Number.isFinite(maxProductsRaw) && maxProductsRaw >= 0 ? maxProductsRaw : 0;
   const searchDirection = getSelectedDirection();
+  const timeSlots = getTimeslotConfig(activeServiceId) ? getSelectedTimeslots() : [];
+  const monthFilter = monthFilterCheckbox.checked;
+
+  // 시간대 기반 서비스에서 시간대가 하나도 선택되지 않았으면 경고
+  if (getTimeslotConfig(activeServiceId) && timeSlots.length === 0) {
+    addLog('warn', '예약 시간대를 1개 이상 선택해 주세요.');
+    return;
+  }
 
   setRunningState(true);
-  addLog('loading', `예약 시작: ${targetDates.join(', ')}${titleFilter ? ` | 필터: ${titleFilter}` : ' | 필터 없음'} | 탐색 상품 수: ${maxProducts === 0 ? '전체' : maxProducts} | 방향: ${searchDirection === 'backward' ? '후방' : '전방'}`);
+  const timeSummary = timeSlots.length > 0 ? ` | 시간대: ${timeSlots.map(h => String(h).padStart(2, '0') + ':00').join(', ')}` : '';
+  const monthSummary = monthFilter ? ' | 월간필터 ON' : '';
+  addLog('loading', `예약 시작: ${targetDates.join(', ')}${titleFilter ? ` | 필터: ${titleFilter}` : ' | 필터 없음'}${monthSummary} | 탐색 상품 수: ${maxProducts === 0 ? '전체' : maxProducts} | 방향: ${searchDirection === 'backward' ? '후방' : '전방'}${timeSummary}`);
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -204,7 +314,9 @@ btnStart.addEventListener('click', async () => {
       targetDates,
       titleFilter,
       maxProducts,
-      searchDirection
+      searchDirection,
+      timeSlots,
+      monthFilter
     });
 
     if (!response || !response.success) {
@@ -342,8 +454,10 @@ document.body.classList.add('is-window');
   const dd = String(today.getDate()).padStart(2, '0');
   datePicker.min = `${yyyy}-${mm}-${dd}`;
 
-  // 활성 서비스의 제목 필터 + 탐색 상품 수 + 탐색 방향 로드
+  // 활성 서비스의 제목 필터 + 월간 필터 + 탐색 상품 수 + 탐색 방향 + 시간대 로드
   await loadFilterForService(activeServiceId);
+  await loadMonthFilterForService(activeServiceId);
   await loadMaxProducts();
   await loadSearchDirection();
+  await renderTimeslotSection(activeServiceId);
 })();

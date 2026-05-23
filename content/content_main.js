@@ -2,8 +2,8 @@
 
 const SERVICE_REGISTRY = {
   jungnang_camping: new JungnangCampingService(),
+  yangjae_tennis: new YangjaeTennisService(),
   // 신규 서비스 추가 시 여기에 등록
-  // seoul_forest: new SeoulForestCampingService(),
 };
 
 // 현재 실행 중인 서비스 인스턴스
@@ -69,6 +69,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       titleFilter: message.titleFilter,
       maxProducts: message.maxProducts,
       searchDirection: message.searchDirection,
+      timeSlots: message.timeSlots,
+      monthFilter: message.monthFilter,
     }, '시작');
     sendResponse({ success: true });
     return true;
@@ -124,6 +126,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       titleFilter: macroState.titleFilter,
       maxProducts: macroState.maxProducts,
       searchDirection: macroState.searchDirection,
+      timeSlots: macroState.timeSlots,
+      monthFilter: macroState.monthFilter,
     }, '자동재개');
   } catch (e) {
     sendLog('error', `[자동재개] 오류: ${e.message}`);

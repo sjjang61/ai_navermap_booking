@@ -35,7 +35,9 @@
         "content/utils/dom_helper.js",
         "content/utils/date_helper.js",
         "content/services/base_service.js",
+        "content/services/naver_booking_service.js",
         "content/services/jungnang_camping.js",
+        "content/services/yangjae_tennis.js",
         "content/content_main.js"
       ],
       "run_at": "document_idle"
