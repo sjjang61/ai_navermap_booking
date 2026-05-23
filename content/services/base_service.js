@@ -13,11 +13,11 @@ class BaseReservationService {
 
   /**
    * 예약 자동화 실행 — 서브클래스에서 반드시 구현
-   * @param {string[]} targetDates - 'yyyy-mm-dd' 형식 날짜 배열
+   * @param {{ targetDates: string[], titleFilter?: string }} opts
    * @param {function} logCallback - (level, message) => void
    * @returns {Promise<void>}
    */
-  async run(targetDates, logCallback) {
+  async run(opts, logCallback) {
     throw new Error(`run() must be implemented in ${this.constructor.name}`);
   }
 

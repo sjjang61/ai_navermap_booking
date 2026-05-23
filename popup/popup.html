@@ -12,12 +12,6 @@
     <header class="app-header">
       <span class="app-icon">🏕</span>
       <span class="app-title">네이버 예약 매크로</span>
-      <button id="btnPopout" class="btn-popout" title="독립 창으로 열기">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-          <path d="M1.5 1h5.25a.75.75 0 0 1 0 1.5H2.5v11h11v-4.25a.75.75 0 0 1 1.5 0V14a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
-          <path d="M9 1.75A.75.75 0 0 1 9.75 1H15a1 1 0 0 1 1 1v5.25a.75.75 0 0 1-1.5 0V3.56L8.03 10.03a.75.75 0 1 1-1.06-1.06L13.44 2.5H9.75A.75.75 0 0 1 9 1.75z"/>
-        </svg>
-      </button>
     </header>
 
     <!-- 서비스 탭 -->
@@ -33,18 +27,18 @@
         <div class="mode-label">날짜 선택 모드</div>
         <div class="mode-radio-group">
           <label class="radio-label">
-            <input type="radio" name="dateMode" value="specific" checked />
+            <input type="radio" name="dateMode" value="specific" />
             <span>특정 날짜</span>
           </label>
           <label class="radio-label">
-            <input type="radio" name="dateMode" value="weekday" />
+            <input type="radio" name="dateMode" value="weekday" checked />
             <span>요일 반복</span>
           </label>
         </div>
       </section>
 
       <!-- 특정 날짜 선택 패널 -->
-      <section class="panel" id="panel-specific">
+      <section class="panel hidden" id="panel-specific">
         <div class="input-row">
           <input type="date" id="datePicker" class="date-input" />
           <button id="btnAddDate" class="btn btn-secondary">추가</button>
@@ -53,7 +47,7 @@
       </section>
 
       <!-- 요일 반복 선택 패널 -->
-      <section class="panel hidden" id="panel-weekday">
+      <section class="panel" id="panel-weekday">
         <div class="weekday-checkboxes">
           <label class="weekday-label"><input type="checkbox" value="1" /><span>월</span></label>
           <label class="weekday-label"><input type="checkbox" value="2" /><span>화</span></label>
@@ -67,6 +61,32 @@
           <span class="weeks-label">검색 범위: 오늘부터</span>
           <input type="number" id="weeksAhead" class="weeks-input" value="4" min="1" max="24" />
           <span class="weeks-label">주 이내</span>
+        </div>
+      </section>
+
+      <!-- 상품 제목 필터 -->
+      <section class="filter-section">
+        <label for="titleFilter" class="filter-label">상품 제목 필터 (정규식)</label>
+        <input type="text" id="titleFilter" class="filter-input" placeholder="비우면 모든 상품 탐색" />
+        <div class="filter-row">
+          <p class="filter-helper">매칭되는 상품만 탐색합니다.</p>
+          <button id="btnResetFilter" class="btn-link" type="button">기본값으로</button>
+        </div>
+        <div class="search-count-row">
+          <label for="maxProducts" class="search-count-label">탐색 상품 수</label>
+          <input type="number" id="maxProducts" class="search-count-input" value="0" min="0" max="999" />
+          <span class="search-count-hint">0 = 전체</span>
+        </div>
+        <div class="direction-row">
+          <span class="direction-label">탐색 방향</span>
+          <label class="radio-label">
+            <input type="radio" name="searchDirection" value="forward" checked />
+            <span>전방 탐색</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="searchDirection" value="backward" />
+            <span>후방 탐색</span>
+          </label>
         </div>
       </section>
 
@@ -84,6 +104,7 @@
     </main>
   </div>
 
+  <script src="../shared/services_config.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

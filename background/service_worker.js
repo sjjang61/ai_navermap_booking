@@ -1,6 +1,59 @@
 // Background Service Worker
 
+// 서비스 메타데이터 단일 소스 로드 (content script와 공유)
+// importScripts는 MV3 classic service worker에서 동기적으로 동작한다.
+importScripts('../shared/services_config.js');
+
 const NAVER_MAP_URL = 'https://map.naver.com/';
+
+// ─── Service Worker Keepalive ─────────────────────────────────────────────────
+// MV3 service worker는 idle 상태에서 Chrome에 의해 종료됨 (약 30초)
+// 예약 실행 중에는 chrome.alarms로 주기적으로 wake up 유지
+let _keepaliveInterval = null;
+
+function startKeepalive() {
+  // 20초마다 alarm으로 service worker를 깨워둠
+  chrome.alarms.create('keepalive', { periodInMinutes: 1/3 }); // 20초마다
+}
+
+function stopKeepalive() {
+  chrome.alarms.clear('keepalive');
+}
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'keepalive') {
+    // service worker가 살아있다는 것을 확인하는 동작
+    chrome.storage.local.get('isRunning').then(({ isRunning }) => {
+      if (!isRunning) stopKeepalive();
+    });
+  }
+});
+
+// ─── Action 클릭 → 독립 팝업 창 오픈 ──────────────────────────────────────────
+// manifest에 default_popup이 없으므로 이 핸들러가 발화한다.
+// 기존 팝업 창이 있으면 포커스, 없으면 새로 띄운다.
+chrome.action.onClicked.addListener(async () => {
+  const popupUrl = chrome.runtime.getURL('popup/popup.html');
+
+  const existingTabs = await chrome.tabs.query({ url: popupUrl + '*' });
+  if (existingTabs.length > 0) {
+    const tab = existingTabs[0];
+    try {
+      await chrome.windows.update(tab.windowId, { focused: true });
+      await chrome.tabs.update(tab.id, { active: true });
+      return;
+    } catch (_) {
+      // 기존 창이 사라졌으면 아래에서 새로 연다
+    }
+  }
+
+  await chrome.windows.create({
+    url: popupUrl,
+    type: 'popup',
+    width: 400,
+    height: 640,
+  });
+});
 
 /**
  * 메시지 수신 핸들러 (Popup → Background)
@@ -41,13 +94,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * 예약 시작 처리
  */
 async function handleStartReservation(message) {
-  const { serviceId, targetDates } = message;
+  const { serviceId, targetDates, titleFilter, maxProducts, searchDirection } = message;
 
-  // 상태 저장
+  // 이전 실행의 macroState 잔여물 제거 (자동 재개 오작동 방지)
+  // 상태 저장 + service worker keepalive 시작
   await chrome.storage.local.set({
     isRunning: true,
-    currentServiceId: serviceId
+    currentServiceId: serviceId,
+    macroState: null
   });
+  startKeepalive();
 
   // 네이버 지도 탭 탐색 또는 새로 열기
   const tabId = await getOrOpenNaverMapTab(serviceId);
@@ -57,6 +113,9 @@ async function handleStartReservation(message) {
     return { success: false, error: '탭을 열 수 없습니다.' };
   }
 
+  // 탭 URL 갱신 후 페이지 로드가 완전히 끝날 때까지 대기
+  await waitForTabComplete(tabId);
+
   // Content Script가 로드될 때까지 대기 후 메시지 전송
   await waitForContentScript(tabId);
 
@@ -64,7 +123,10 @@ async function handleStartReservation(message) {
     await chrome.tabs.sendMessage(tabId, {
       action: 'RUN_SERVICE',
       serviceId,
-      targetDates
+      targetDates,
+      titleFilter,
+      maxProducts,
+      searchDirection
     });
   } catch (err) {
     await chrome.storage.local.set({ isRunning: false, currentServiceId: null });
@@ -88,7 +150,9 @@ async function handleStopReservation() {
     } catch (_) {}
   }
 
-  await chrome.storage.local.set({ isRunning: false, currentServiceId: null });
+  stopKeepalive();
+  // 자동 재개를 막기 위해 macroState도 함께 정리
+  await chrome.storage.local.set({ isRunning: false, currentServiceId: null, macroState: null });
   return { success: true };
 }
 
@@ -96,6 +160,7 @@ async function handleStopReservation() {
  * 서비스 완료/오류 처리
  */
 async function handleServiceFinished(message) {
+  stopKeepalive();
   const timestamp = new Date().toISOString();
   const existing = await chrome.storage.local.get('lastRunResult');
 
@@ -130,12 +195,8 @@ function forwardLogToPopup(message) {
  * @returns {Promise<number|null>} tabId
  */
 async function getOrOpenNaverMapTab(serviceId) {
-  // 서비스별 실제 예약 페이지 URL (네이버 예약 도메인)
-  const SERVICE_URLS = {
-    jungnang_camping: 'https://m.booking.naver.com/booking/5/bizes/387475?theme=place&service-target=map-pc&lang=ko&area=bmp&map-search=1'
-  };
-
-  const entryUrl = SERVICE_URLS[serviceId];
+  // 서비스별 예약 페이지 URL — shared/services_config.js의 SERVICES_CONFIG에서 조회
+  const entryUrl = SERVICES_CONFIG[serviceId]?.entryUrl;
   if (!entryUrl) return null;
 
   // 기존 예약 탭 탐색 (map.naver.com 또는 m.booking.naver.com)
@@ -151,6 +212,37 @@ async function getOrOpenNaverMapTab(serviceId) {
   // 새 탭 열기
   const newTab = await chrome.tabs.create({ url: entryUrl, active: true });
   return newTab.id;
+}
+
+/**
+ * 탭 페이지 로드 완료 대기 (chrome.tabs.onUpdated)
+ * URL 갱신 직후 이전 content script가 살아있는 동안 PING이 응답하는 문제 방지
+ * @param {number} tabId
+ * @param {number} timeout - ms
+ */
+async function waitForTabComplete(tabId, timeout = 15000) {
+  const tab = await chrome.tabs.get(tabId);
+  if (tab.status === 'complete') {
+    // 이미 complete 상태라면 URL 갱신이 막 시작됐을 수 있으므로 잠깐 대기
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      resolve(); // 타임아웃이어도 계속 진행
+    }, timeout);
+
+    function listener(updatedTabId, changeInfo) {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(listener);
+  });
 }
 
 /**

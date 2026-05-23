@@ -1,6 +1,16 @@
 // DOM 조작 유틸리티
 
 /**
+ * 현재 페이지가 네이버 예약의 "예약 확인/결제" 페이지(/request)인지 여부
+ * 패턴: /booking/{ver}/bizes/{place}/items/{item}/request
+ * 매크로는 이 페이지 도달 시 종료한다(결제는 사용자 수동 진행).
+ * @returns {boolean}
+ */
+function isOnRequestPage() {
+  return /\/bizes\/\d+\/items\/\d+\/request(\/|$|\?)/.test(location.pathname + location.search);
+}
+
+/**
  * 엘리먼트 등장 대기 (폴링 방식)
  * @param {string} selector - CSS 셀렉터
  * @param {number} timeout - 최대 대기 시간 (ms)

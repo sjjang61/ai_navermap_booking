@@ -5,8 +5,7 @@ let activeServiceId = 'jungnang_camping';
 let selectedDates = [];       // 특정 날짜 모드
 let isRunning = false;
 
-// 독립 창 모드 여부 (URL 파라미터 ?mode=window 로 판별)
-const IS_WINDOW_MODE = new URLSearchParams(location.search).get('mode') === 'window';
+// 팝업은 항상 독립 창으로만 표시된다 (manifest의 default_popup 제거됨).
 
 // ─── DOM 참조 ─────────────────────────────────────────────────────
 const tabItems = document.querySelectorAll('.tab-item');
@@ -20,7 +19,10 @@ const weeksAheadInput = document.getElementById('weeksAhead');
 const btnStart = document.getElementById('btnStart');
 const btnStop = document.getElementById('btnStop');
 const logPanel = document.getElementById('logPanel');
-const btnPopout = document.getElementById('btnPopout');
+const titleFilterInput = document.getElementById('titleFilter');
+const btnResetFilter = document.getElementById('btnResetFilter');
+const maxProductsInput = document.getElementById('maxProducts');
+const directionRadios = document.querySelectorAll('input[name="searchDirection"]');
 
 // ─── 탭 전환 ──────────────────────────────────────────────────────
 tabItems.forEach(tab => {
@@ -28,6 +30,83 @@ tabItems.forEach(tab => {
     tabItems.forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     activeServiceId = tab.dataset.serviceId;
+    loadFilterForService(activeServiceId);
+  });
+});
+
+// ─── 제목 필터: 서비스별 저장/로드 ────────────────────────────────
+function getDefaultFilter(serviceId) {
+  return (typeof SERVICES_CONFIG !== 'undefined' && SERVICES_CONFIG[serviceId]?.defaultTitleFilter) || '';
+}
+
+async function loadFilterForService(serviceId) {
+  try {
+    const { serviceFilters = {} } = await chrome.storage.local.get('serviceFilters');
+    const saved = serviceFilters[serviceId];
+    titleFilterInput.value = (saved !== undefined) ? saved : getDefaultFilter(serviceId);
+    titleFilterInput.placeholder = getDefaultFilter(serviceId) || '비우면 모든 상품 탐색';
+  } catch (_) {
+    titleFilterInput.value = getDefaultFilter(serviceId);
+  }
+}
+
+// input 이벤트마다 저장 (debounce 없이 가볍게)
+titleFilterInput.addEventListener('input', async () => {
+  try {
+    const { serviceFilters = {} } = await chrome.storage.local.get('serviceFilters');
+    serviceFilters[activeServiceId] = titleFilterInput.value;
+    await chrome.storage.local.set({ serviceFilters });
+  } catch (_) {}
+});
+
+btnResetFilter.addEventListener('click', async () => {
+  const def = getDefaultFilter(activeServiceId);
+  titleFilterInput.value = def;
+  try {
+    const { serviceFilters = {} } = await chrome.storage.local.get('serviceFilters');
+    serviceFilters[activeServiceId] = def;
+    await chrome.storage.local.set({ serviceFilters });
+  } catch (_) {}
+});
+
+// ─── 탐색 상품 수: 저장/로드 ──────────────────────────────────────
+async function loadMaxProducts() {
+  try {
+    const { maxProducts = 0 } = await chrome.storage.local.get('maxProducts');
+    maxProductsInput.value = String(maxProducts);
+  } catch (_) {
+    maxProductsInput.value = '0';
+  }
+}
+
+maxProductsInput.addEventListener('input', async () => {
+  const n = parseInt(maxProductsInput.value, 10);
+  const value = Number.isFinite(n) && n >= 0 ? n : 0;
+  try {
+    await chrome.storage.local.set({ maxProducts: value });
+  } catch (_) {}
+});
+
+// ─── 탐색 방향: 저장/로드 ─────────────────────────────────────────
+function getSelectedDirection() {
+  const checked = Array.from(directionRadios).find(r => r.checked);
+  return checked ? checked.value : 'forward';
+}
+
+async function loadSearchDirection() {
+  try {
+    const { searchDirection = 'forward' } = await chrome.storage.local.get('searchDirection');
+    directionRadios.forEach(r => { r.checked = (r.value === searchDirection); });
+  } catch (_) {
+    directionRadios.forEach(r => { r.checked = (r.value === 'forward'); });
+  }
+}
+
+directionRadios.forEach(r => {
+  r.addEventListener('change', async () => {
+    try {
+      await chrome.storage.local.set({ searchDirection: getSelectedDirection() });
+    } catch (_) {}
   });
 });
 
@@ -100,14 +179,32 @@ btnStart.addEventListener('click', async () => {
     return;
   }
 
+  // 제목 필터 유효성 검사 (비어 있으면 필터 없음)
+  const titleFilter = titleFilterInput.value.trim();
+  if (titleFilter) {
+    try {
+      new RegExp(titleFilter);
+    } catch (e) {
+      addLog('error', `제목 필터 정규식 오류: ${e.message}`);
+      return;
+    }
+  }
+
+  const maxProductsRaw = parseInt(maxProductsInput.value, 10);
+  const maxProducts = Number.isFinite(maxProductsRaw) && maxProductsRaw >= 0 ? maxProductsRaw : 0;
+  const searchDirection = getSelectedDirection();
+
   setRunningState(true);
-  addLog('loading', `예약 시작: ${targetDates.join(', ')}`);
+  addLog('loading', `예약 시작: ${targetDates.join(', ')}${titleFilter ? ` | 필터: ${titleFilter}` : ' | 필터 없음'} | 탐색 상품 수: ${maxProducts === 0 ? '전체' : maxProducts} | 방향: ${searchDirection === 'backward' ? '후방' : '전방'}`);
 
   try {
     const response = await chrome.runtime.sendMessage({
       action: 'START_RESERVATION',
       serviceId: activeServiceId,
-      targetDates
+      targetDates,
+      titleFilter,
+      maxProducts,
+      searchDirection
     });
 
     if (!response || !response.success) {
@@ -228,24 +325,8 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-// ─── 독립 창 토글 ─────────────────────────────────────────────────
-if (IS_WINDOW_MODE) {
-  // 독립 창: 버튼 숨김, body에 클래스 추가
-  btnPopout.classList.add('hidden');
-  document.body.classList.add('is-window');
-} else {
-  // 팝업: 클릭 시 독립 창 오픈
-  btnPopout.addEventListener('click', () => {
-    const url = chrome.runtime.getURL('popup/popup.html') + '?mode=window';
-    chrome.windows.create({
-      url,
-      type: 'popup',
-      width: 400,
-      height: 600
-    });
-    window.close();
-  });
-}
+// ─── 팝업은 항상 독립 창 모드 (manifest default_popup 제거됨) ───────
+document.body.classList.add('is-window');
 
 // ─── 초기화: 스토리지에서 실행 상태 복원 ─────────────────────────
 (async function init() {
@@ -260,4 +341,9 @@ if (IS_WINDOW_MODE) {
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
   datePicker.min = `${yyyy}-${mm}-${dd}`;
+
+  // 활성 서비스의 제목 필터 + 탐색 상품 수 + 탐색 방향 로드
+  await loadFilterForService(activeServiceId);
+  await loadMaxProducts();
+  await loadSearchDirection();
 })();
